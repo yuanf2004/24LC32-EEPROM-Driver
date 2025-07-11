@@ -30,6 +30,32 @@
 
 #include <stdint.h>
 
+void gpiob_init(void);
+
+void i2c_init(void);
+
+void i2c_start(void);
+
+void i2c_stop(void);
+
+void eeprom_read_control_byte(void);
+
+void eeprom_write_control_byte(void);
+
+void eeprom_high_byte(uint16_t addr);
+
+void eeprom_low_byte(uint16_t addr);
+
+void eeprom_write_byte(uint16_t addr, uint8_t data);
+
+uint8_t eeprom_read_byte(uint16_t addr);
+
+void test_eeprom_write_byte(void);
+
+uint8_t test_eeprom_read_byte(void);
+
+void test_write_control_byte(void);
+
 #endif
 
 /* Page 781 I2C */

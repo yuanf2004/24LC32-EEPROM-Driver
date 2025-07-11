@@ -1,10 +1,9 @@
 #include "i2c.h"
 
 void gpiob_init(void){
-/* Initialize GPIOB */
+/* Initialize GPIOB for SCL and SDA */
 
     /* Enable GPIOB RCC */
-    RCC_AHB1ENR &= ~(0x1 << 1);
     RCC_AHB1ENR |= (0x1 << 1);
 
     /* 
@@ -20,7 +19,7 @@ void gpiob_init(void){
 
     /* Setting to open-drain */
     GPIOB_OTYPER &= ~((0x1 << 6) | (0x1 << 7));
-    GPIOB_OTYPER |= (0x3  << 6);
+    GPIOB_OTYPER |= ((0x1 << 6) | (0x1 << 7));
 
     /* Setting to pull-up */
     GPIOB_PUPDR &= ~((0x3 << (6 * 2))|(0x3 << (7 * 2)));
@@ -38,8 +37,11 @@ void i2c_init(void){
     gpiob_init();
 
     /* Enable RCC for I2C */
-    RCC_APB1ENR &= ~(0x1 << 21);
     RCC_APB1ENR |= (0x1 << 21);
+
+    /* Reset I2C1 peripheral */
+    I2C1_CR1 |= (1 << 15);  // Set SWRST bit
+    I2C1_CR1 &= ~(1 << 15); // Clear SWRST bit
 
     /* 
     Control Register 2:
@@ -152,7 +154,13 @@ void eeprom_write_byte(uint16_t addr, uint8_t data){
     while(!(I2C1_SR1 & (1 << 2))){}
 
     i2c_stop();
+
+    //for(int i = 0; i < 10000; i++){};
 };
+
+void eeprom_reset_address(uint16_t addr){
+    eeprom_write_byte(addr, 0xFF);
+}
 
 uint8_t eeprom_read_byte(uint16_t addr){
     /* Read a byte of data from specified address */
@@ -171,3 +179,24 @@ uint8_t eeprom_read_byte(uint16_t addr){
     return r;
 };
 
+void test_eeprom_write_byte(void){
+/* Test Function for EEPROM Writing */
+
+/* Write to address 100 for 169 */
+    uint16_t addr = 33;
+    uint8_t data = 169;
+    
+    i2c_init();
+    eeprom_write_byte(addr, data);
+
+    for(int i = 0; i < 10000; i++){};
+}
+
+uint8_t test_eeprom_read_byte(void){
+    i2c_init();
+
+    uint8_t r = 0;
+    r = eeprom_read_byte(33);
+
+    return r;
+}
