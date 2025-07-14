@@ -19,3 +19,4 @@ void gpioa_init(void){
     GPIOA_PUPDR |= (0x2);
     GPIOA_BSRR = (0x1);
 }
+

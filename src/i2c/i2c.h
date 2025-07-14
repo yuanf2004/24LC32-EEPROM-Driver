@@ -32,7 +32,7 @@
 
 void gpiob_init(void);
 
-void i2c_init(void);
+void eeprom_i2c_init(void);
 
 void i2c_start(void);
 
@@ -48,13 +48,11 @@ void eeprom_low_byte(uint16_t addr);
 
 void eeprom_write_byte(uint16_t addr, uint8_t data);
 
-uint8_t eeprom_read_byte(uint16_t addr);
+uint16_t eeprom_read_byte(uint16_t addr);
 
-void test_eeprom_write_byte(void);
+void test_eeprom_write_byte(uint16_t a, uint16_t d);
 
-uint8_t test_eeprom_read_byte(void);
-
-void test_write_control_byte(void);
+uint16_t test_eeprom_read_byte(uint16_t a);
 
 #endif
 

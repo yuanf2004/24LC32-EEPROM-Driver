@@ -1,4 +1,5 @@
 #include "i2c.h"
+#include "systick/systick.h"
 
 void gpiob_init(void){
 /* Initialize GPIOB for SCL and SDA */
@@ -30,7 +31,7 @@ void gpiob_init(void){
     GPIOB_AFRL |= ((0x4 << (6 * 4)) | (0x4 << (7 * 4)));
 } 
 
-void i2c_init(void){
+void eeprom_i2c_init(void){
     /* I2C peripheral enable */
 
     /* Set up GPIOB - PB6 (SCL) and PB7 (SDA) */
@@ -72,6 +73,8 @@ void i2c_init(void){
     */
     I2C1_CR1 = 0;
     I2C1_CR1 |= ((0x1 << 10) | (0x1 << 0));
+
+    systick_sleep(10);
 }
 
 void i2c_start(void){
@@ -101,6 +104,7 @@ void eeprom_read_control_byte(void){
     temp = I2C1_SR2;
     /* Compiler ignore */
     (void) temp;
+    systick_sleep(1);
 }
 
 void eeprom_write_control_byte(void){
@@ -116,17 +120,19 @@ void eeprom_write_control_byte(void){
     temp = I2C1_SR2;
     /* Compiler ignore */
     (void) temp;
+    systick_sleep(1);
 }
 
 void eeprom_high_byte(uint16_t addr){
 /* Convert full address into only high byte for send */
     /* Wait for TxE (data register is empty) */
-    while(!(I2C1_SR1 & (1<< 7))){};
+    while(!(I2C1_SR1 & (1 << 7))){};
 
     /* Extract the 4 high bytes of the addr and load DR */
     uint8_t hb = (addr >> 8) & 0xF; 
 
     I2C1_DR = hb;
+    systick_sleep(1);
 };
 
 void eeprom_low_byte(uint16_t addr){
@@ -137,13 +143,16 @@ void eeprom_low_byte(uint16_t addr){
     /* Extract the 8 low bytes of the addr and load DR */
     uint8_t lb = addr & 0xFF;
     I2C1_DR = lb;
+    systick_sleep(1);
 };
 
 void eeprom_write_byte(uint16_t addr, uint8_t data){
     /* Write a byte of data to specified address */
     i2c_start();
     eeprom_write_control_byte();
+    systick_sleep(1);
     eeprom_high_byte(addr);
+    systick_sleep(1);
     eeprom_low_byte(addr);
     
     /* Wait for TxE */
@@ -162,13 +171,15 @@ void eeprom_reset_address(uint16_t addr){
     eeprom_write_byte(addr, 0xFF);
 }
 
-uint8_t eeprom_read_byte(uint16_t addr){
+uint16_t eeprom_read_byte(uint16_t addr){
     /* Read a byte of data from specified address */
     i2c_start();
     /* Address must be set with write control byte, even when reading */
     eeprom_write_control_byte();
     eeprom_high_byte(addr);
     eeprom_low_byte(addr);
+
+    /* Repeated start */
     i2c_start();
     eeprom_read_control_byte();
 
@@ -179,24 +190,22 @@ uint8_t eeprom_read_byte(uint16_t addr){
     return r;
 };
 
-void test_eeprom_write_byte(void){
+void test_eeprom_write_byte(uint16_t a, uint16_t d){
 /* Test Function for EEPROM Writing */
 
 /* Write to address 100 for 169 */
-    uint16_t addr = 33;
-    uint8_t data = 169;
+    uint16_t addr = a;
+    uint8_t data = d;
     
-    i2c_init();
+    eeprom_i2c_init();
     eeprom_write_byte(addr, data);
-
-    for(int i = 0; i < 10000; i++){};
 }
 
-uint8_t test_eeprom_read_byte(void){
-    i2c_init();
+uint16_t test_eeprom_read_byte(uint16_t a){
+    eeprom_i2c_init();
 
-    uint8_t r = 0;
-    r = eeprom_read_byte(33);
+    uint16_t r = 0;
+    r = eeprom_read_byte(a);
 
     return r;
 }
