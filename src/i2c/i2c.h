@@ -29,6 +29,7 @@
 #define I2C1_TRISE *((uint32_t *)(0x40005400 + 0x20))
 
 #include <stdint.h>
+#include <stddef.h>
 
 void gpiob_init(void);
 

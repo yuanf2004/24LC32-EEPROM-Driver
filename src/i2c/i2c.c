@@ -1,6 +1,12 @@
 #include "i2c.h"
 #include "systick/systick.h"
 
+/*
+#########
+Init Code
+#########
+*/
+
 void gpiob_init(void){
 /* Initialize GPIOB for SCL and SDA */
 
@@ -77,6 +83,12 @@ void eeprom_i2c_init(void){
     systick_sleep(10);
 }
 
+/*
+###################
+EEPROM Comm Helpers
+###################
+*/
+
 void i2c_start(void){
 /* Start condition */
 /* Set START bit to 1 */
@@ -146,8 +158,14 @@ void eeprom_low_byte(uint16_t addr){
     systick_sleep(1);
 };
 
+/* 
+#################################
+Application Programming Interface
+#################################
+*/
+
 void eeprom_write_byte(uint16_t addr, uint8_t data){
-    /* Write a byte of data to specified address */
+    /* Write a single byte of data to specified address */
     i2c_start();
     eeprom_write_control_byte();
     systick_sleep(1);
@@ -167,9 +185,68 @@ void eeprom_write_byte(uint16_t addr, uint8_t data){
     //for(int i = 0; i < 10000; i++){};
 };
 
-void eeprom_reset_address(uint16_t addr){
-    eeprom_write_byte(addr, 0xFF);
+void eeprom_write_page(uint16_t addr, uint8_t *arr, size_t arrlen){
+    /* Write up to a page (8 bytes) of content */
+    
+    /* Return this function if the input is larger than 8 pages */
+    if(arrlen > 8){
+        return;
+    }
+
+    i2c_start();
+    eeprom_write_control_byte();
+    systick_sleep(1);
+    eeprom_high_byte(addr);
+    systick_sleep(1);
+    eeprom_low_byte(addr);
+
+    for(size_t i = 0; i < arrlen; i++){
+        while(!(I2C1_SR1 & (1 << 7))){};
+        I2C1_DR = arr[i];
+
+        /* Wait for BTF (Byte transfer finished) */
+        while(!(I2C1_SR1 & (1 << 2))){}
+    }
+    i2c_stop();
 }
+
+void eeprom_read_page(uint16_t addr, uint8_t *readarray, size_t readlen){
+    /* Read from the EEPROM by providing an array and length of reading */
+
+    i2c_start();
+    eeprom_write_control_byte();
+    eeprom_high_byte(addr);
+    eeprom_low_byte(addr);
+
+    i2c_start();
+    eeprom_read_control_byte();
+
+    /* Own code for handling readlen of 1 */
+    if(readlen == 1){
+        /* Wait for RxNE */
+        while(!(I2C1_SR1 & (1 << 6))){};
+        readarray[0] = I2C1_DR;
+        /* Send NACK */
+        I2C1_CR1 &= ~(1 << 10);
+        i2c_stop();
+        return;
+    }
+
+    /* Set ACK for each byte read */
+    I2C1_CR1 |= (1 << 10);
+
+    for(size_t i = 0; i < readlen; i++){
+        /* Wait for RxNE */
+        while(!(I2C1_SR1 & (1 << 6))){}
+        readarray[i] = I2C1_DR;
+            if(i == readlen-1){
+                /* Send NACK for last byte */
+                I2C1_CR1 &= ~(1 << 10);
+                break;
+            }
+    }
+}
+
 
 uint16_t eeprom_read_byte(uint16_t addr){
     /* Read a byte of data from specified address */
@@ -189,6 +266,12 @@ uint16_t eeprom_read_byte(uint16_t addr){
     i2c_stop();
     return r;
 };
+
+/*
+##############
+TEST FUNCTIONS
+##############
+*/
 
 void test_eeprom_write_byte(uint16_t a, uint16_t d){
 /* Test Function for EEPROM Writing */
