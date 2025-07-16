@@ -2,6 +2,10 @@
 #include "systick/systick.h"
 
 /*
+Driver for Adafruit 24LC32 EEPROM
+*/
+
+/*
 #########
 Init Code
 #########
@@ -158,31 +162,58 @@ void eeprom_low_byte(uint16_t addr){
     systick_sleep(1);
 };
 
+void eeprom_ack_poll(void){
+/* Acknowledge polling for post-write */
+    i2c_start();
+
+    while(1){
+        eeprom_write_control_byte();
+            
+            MASTER_CLEAR_AF();
+        }
+        else{
+            break;
+        }
+    }
+};
+
 /* 
 #################################
 Application Programming Interface
 #################################
 */
 
+uint16_t eeprom_read_byte(uint16_t addr){
+    /* Read a byte of data from specified address */
+    i2c_start();
+    /* Reading starts with write control byte to target address */
+    eeprom_write_control_byte();
+    eeprom_high_byte(addr);
+    eeprom_low_byte(addr);
+
+    /* Repeated start, then send read control byte */
+    i2c_start();
+    eeprom_read_control_byte();
+
+    WAIT_FOR_RXNE();
+    uint8_t r = I2C1_DR;
+    i2c_stop();
+    return r;
+};
+
 void eeprom_write_byte(uint16_t addr, uint8_t data){
     /* Write a single byte of data to specified address */
     i2c_start();
     eeprom_write_control_byte();
-    systick_sleep(1);
     eeprom_high_byte(addr);
-    systick_sleep(1);
     eeprom_low_byte(addr);
     
-    /* Wait for TxE */
-    while(!(I2C1_SR1 & (1 << 7))){};
+    WAIT_FOR_TXE();
     I2C1_DR = data;
 
-    /* Wait for BTF (Byte transfer finished) */
-    while(!(I2C1_SR1 & (1 << 2))){}
+    WAIT_FOR_BTF();
 
     i2c_stop();
-
-    //for(int i = 0; i < 10000; i++){};
 };
 
 void eeprom_write_page(uint16_t addr, uint8_t *arr, size_t arrlen){
@@ -194,18 +225,17 @@ void eeprom_write_page(uint16_t addr, uint8_t *arr, size_t arrlen){
     }
 
     i2c_start();
+    /* Write 0b10100000 */
     eeprom_write_control_byte();
-    systick_sleep(1);
+    //systick_sleep(1);
     eeprom_high_byte(addr);
-    systick_sleep(1);
+    //systick_sleep(1);
     eeprom_low_byte(addr);
 
     for(size_t i = 0; i < arrlen; i++){
-        while(!(I2C1_SR1 & (1 << 7))){};
+        WAIT_FOR_TXE();
         I2C1_DR = arr[i];
-
-        /* Wait for BTF (Byte transfer finished) */
-        while(!(I2C1_SR1 & (1 << 2))){}
+        WAIT_FOR_BTF();
     }
     i2c_stop();
 }
@@ -223,49 +253,25 @@ void eeprom_read_page(uint16_t addr, uint8_t *readarray, size_t readlen){
 
     /* Own code for handling readlen of 1 */
     if(readlen == 1){
-        /* Wait for RxNE */
-        while(!(I2C1_SR1 & (1 << 6))){};
+        WAIT_FOR_RXNE();
         readarray[0] = I2C1_DR;
-        /* Send NACK */
-        I2C1_CR1 &= ~(1 << 10);
+        MASTER_SEND_NACK();
         i2c_stop();
         return;
     }
 
     /* Set ACK for each byte read */
-    I2C1_CR1 |= (1 << 10);
+    MASTER_SEND_ACK();
 
     for(size_t i = 0; i < readlen; i++){
-        /* Wait for RxNE */
-        while(!(I2C1_SR1 & (1 << 6))){}
+        WAIT_FOR_RXNE();
         readarray[i] = I2C1_DR;
             if(i == readlen-1){
-                /* Send NACK for last byte */
-                I2C1_CR1 &= ~(1 << 10);
+                MASTER_SEND_NACK();
                 break;
             }
     }
 }
-
-
-uint16_t eeprom_read_byte(uint16_t addr){
-    /* Read a byte of data from specified address */
-    i2c_start();
-    /* Address must be set with write control byte, even when reading */
-    eeprom_write_control_byte();
-    eeprom_high_byte(addr);
-    eeprom_low_byte(addr);
-
-    /* Repeated start */
-    i2c_start();
-    eeprom_read_control_byte();
-
-    /* Wait for RxNE (receiving data register to be empty) */
-    while(!(I2C1_SR1 & (1 << 6))){};
-    uint8_t r = I2C1_DR;
-    i2c_stop();
-    return r;
-};
 
 /*
 ##############
@@ -283,6 +289,14 @@ void test_eeprom_write_byte(uint16_t a, uint16_t d){
     eeprom_i2c_init();
     eeprom_write_byte(addr, data);
 }
+
+void test_eeprom_write_page(uint16_t addr){
+/* Test function for EEPROM writing page */
+    uint8_t write_arr[8] = {21,21,21,21,21,21,21,21};
+    
+    eeprom_i2c_init(); 
+    eeprom_write_page(addr, &write_arr, 8);
+}   
 
 uint16_t test_eeprom_read_byte(uint16_t a){
     eeprom_i2c_init();
