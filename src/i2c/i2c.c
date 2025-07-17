@@ -1,8 +1,23 @@
 #include "i2c.h"
 #include "systick/systick.h"
 
+//TODO
+/*
+- Test the read page function
+- Fix up hard-coding of slave address functions 
+- Add compatibility with not just numbers, but chars ?
+- 
+*/
+
+//!
+/*
+- Write page is still not writing fully to the eeprom
+
+*/
+
 /*
 Driver for Adafruit 24LC32 EEPROM
+Written by: Yuan Feng
 */
 
 /*
@@ -128,7 +143,7 @@ void eeprom_write_control_byte(void){
     /* Send the write control byte to EEPROM */
     /* Set the control byte for write */
     I2C1_DR = 0b10100000;
-    /* Wait for address to be sent flag */
+    /* Wait for address to be sent to slave (slave ACKs) flag */
     while(!(I2C1_SR1 & (1 << 1))){};
 
     /* Read SR1 and then SR2 to clear ADDR */
@@ -137,6 +152,13 @@ void eeprom_write_control_byte(void){
     /* Compiler ignore */
     (void) temp;
     systick_sleep(1);
+}
+
+void ack_poll_write_control_byte(void){
+/* Call this function when writing control byte for ACK polling */
+    I2C1_DR = 0b10100000;
+    /* Wait for ACK (ADDR) or NACK (AF)*/
+    while(!(I2C1_SR1 & ((1 << 1) | (1 << 10)))){};
 }
 
 void eeprom_high_byte(uint16_t addr){
@@ -163,13 +185,15 @@ void eeprom_low_byte(uint16_t addr){
 };
 
 void eeprom_ack_poll(void){
-/* Acknowledge polling for post-write */
-    i2c_start();
-
+/* EEPROM acknowledge polling for post-write */
     while(1){
-        eeprom_write_control_byte();
-            
-            MASTER_CLEAR_AF();
+        i2c_start();
+        ack_poll_write_control_byte();
+        /* If received a NACK, reset */
+        if(MASTER_CHECK_NACK){
+            /* Clear ACK Failure bit */
+            CLEAR_AF();
+            systick_sleep(1);
         }
         else{
             break;
@@ -214,6 +238,7 @@ void eeprom_write_byte(uint16_t addr, uint8_t data){
     WAIT_FOR_BTF();
 
     i2c_stop();
+    eeprom_ack_poll();
 };
 
 void eeprom_write_page(uint16_t addr, uint8_t *arr, size_t arrlen){
@@ -238,6 +263,7 @@ void eeprom_write_page(uint16_t addr, uint8_t *arr, size_t arrlen){
         WAIT_FOR_BTF();
     }
     i2c_stop();
+    eeprom_ack_poll();
 }
 
 void eeprom_read_page(uint16_t addr, uint8_t *readarray, size_t readlen){
@@ -292,7 +318,7 @@ void test_eeprom_write_byte(uint16_t a, uint16_t d){
 
 void test_eeprom_write_page(uint16_t addr){
 /* Test function for EEPROM writing page */
-    uint8_t write_arr[8] = {21,21,21,21,21,21,21,21};
+    uint8_t write_arr[8] = {99,99,99,99,99,99,99,99};
     
     eeprom_i2c_init(); 
     eeprom_write_page(addr, &write_arr, 8);
@@ -305,4 +331,29 @@ uint16_t test_eeprom_read_byte(uint16_t a){
     r = eeprom_read_byte(a);
 
     return r;
+}
+
+void test_eeprom_read_page(uint16_t addr){
+/* Test function for reading a page */
+    init_uart();
+    init_systick();
+
+    eeprom_i2c_init();
+
+    uint8_t test_arr[8];
+    size_t arrsz = 8;
+
+    eeprom_read_page(addr, &test_arr, arrsz);
+    /* Keep printing every element in the array */
+    int i = 0;
+    while(1){
+        /* Reset i if it goes over array bounds */
+        if(i > 7){i = 0;}
+        char buffer[12];
+        sprintf(buffer, "%u - %u\r\n", i, test_arr[i]);
+
+        uart_print(buffer);
+        systick_sleep(250);
+        i++;
+    }
 }

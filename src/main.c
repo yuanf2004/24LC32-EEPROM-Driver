@@ -2,18 +2,13 @@
 
 int main(){  
 
-    init_uart();
-    init_systick();
 
     /* 93 to 100 should all be 21 */
     //test_eeprom_write_page(93);
+    //test_eeprom_write_byte(80, 21);
 
-    uint16_t a = test_eeprom_read_byte(97);
-    char buf[10];
-    sprintf(buf, "%u\r\n", a);
+    test_eeprom_read_page(93);
 
     while(1){
-        uart_print(buf);
-        systick_sleep(500);
     };
 }

@@ -41,15 +41,19 @@ Status Flag Macro Definitions
 #############################
 */
 /* Wait for receive data register to be empty */
-#define WAIT_FOR_RXNE() while(!(I2C1_SR1 & (1 << 6))){};
+#define WAIT_FOR_RXNE() while(!(I2C1_SR1 & (1 << 6))){}
 /* Wait for transmit data register to be empty */
-#define WAIT_FOR_TXE() while(!(I2C1_SR1 & (1 << 7))){};
+#define WAIT_FOR_TXE() while(!(I2C1_SR1 & (1 << 7))){}
 /* Wait for the byte transfer to be finished flag */
 #define WAIT_FOR_BTF() while(!(I2C1_SR1 & (1 << 2))){}
 /* Send an acknowledgement to slave */
 #define MASTER_SEND_ACK() I2C1_CR1 |= (1 << 10);
 /* Send a negative acknowledgement to slave */
 #define MASTER_SEND_NACK() I2C1_CR1 &= ~(1 << 10);
+/* Check if the master received a NACK from slave */
+#define MASTER_CHECK_NACK I2C1_SR1 & (1 << 10)
+/* Clear the acknowledge failure */
+#define CLEAR_AF() I2C1_SR1 &= ~(1 << 10);
 
 /* WIP - ACK POLLING */
 
@@ -60,6 +64,8 @@ Status Flag Macro Definitions
 
 #include <stdint.h>
 #include <stddef.h>
+#include "uart/uart.h"
+#include "systick/systick.h"
 
 void gpiob_init(void);
 
@@ -72,6 +78,8 @@ void i2c_stop(void);
 void eeprom_read_control_byte(void);
 
 void eeprom_write_control_byte(void);
+
+void ack_poll_write_control_byte(void);
 
 void eeprom_high_byte(uint16_t addr);
 
@@ -86,6 +94,8 @@ void test_eeprom_write_byte(uint16_t a, uint16_t d);
 uint16_t test_eeprom_read_byte(uint16_t a);
 
 void test_eeprom_write_page(uint16_t addr);
+
+void test_eeprom_read_page(uint16_t addr);
 
 #endif
 
