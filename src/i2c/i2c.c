@@ -3,16 +3,7 @@
 
 //TODO
 /*
-- Test the read page function
 - Fix up hard-coding of slave address functions 
-- Add compatibility with not just numbers, but chars ?
-- 
-*/
-
-//!
-/*
-- Write page is still not writing fully to the eeprom
-
 */
 
 /*
@@ -58,6 +49,9 @@ void gpiob_init(void){
 
 void eeprom_i2c_init(void){
     /* I2C peripheral enable */
+
+    init_systick();
+    init_uart();
 
     /* Set up GPIOB - PB6 (SCL) and PB7 (SDA) */
     gpiob_init();
@@ -200,15 +194,16 @@ void eeprom_ack_poll(void){
         }
     }
 };
-
 /* 
 #################################
 Application Programming Interface
 #################################
 */
 
-uint16_t eeprom_read_byte(uint16_t addr){
-    /* Read a byte of data from specified address */
+/* Unsigned Integers */
+
+uint8_t eeprom_read_byte_uint(uint16_t addr){
+/* Read a byte of an unsigned integer */
     i2c_start();
     /* Reading starts with write control byte to target address */
     eeprom_write_control_byte();
@@ -225,50 +220,8 @@ uint16_t eeprom_read_byte(uint16_t addr){
     return r;
 };
 
-void eeprom_write_byte(uint16_t addr, uint8_t data){
-    /* Write a single byte of data to specified address */
-    i2c_start();
-    eeprom_write_control_byte();
-    eeprom_high_byte(addr);
-    eeprom_low_byte(addr);
-    
-    WAIT_FOR_TXE();
-    I2C1_DR = data;
-
-    WAIT_FOR_BTF();
-
-    i2c_stop();
-    eeprom_ack_poll();
-};
-
-void eeprom_write_page(uint16_t addr, uint8_t *arr, size_t arrlen){
-    /* Write up to a page (8 bytes) of content */
-    
-    /* Return this function if the input is larger than 8 pages */
-    if(arrlen > 8){
-        return;
-    }
-
-    i2c_start();
-    /* Write 0b10100000 */
-    eeprom_write_control_byte();
-    //systick_sleep(1);
-    eeprom_high_byte(addr);
-    //systick_sleep(1);
-    eeprom_low_byte(addr);
-
-    for(size_t i = 0; i < arrlen; i++){
-        WAIT_FOR_TXE();
-        I2C1_DR = arr[i];
-        WAIT_FOR_BTF();
-    }
-    i2c_stop();
-    eeprom_ack_poll();
-}
-
-void eeprom_read_page(uint16_t addr, uint8_t *readarray, size_t readlen){
-    /* Read from the EEPROM by providing an array and length of reading */
-
+void eeprom_read_uint(uint16_t addr, uint8_t *readarray, size_t readlen){
+/* Read multiple bytes from the EEPROM */
     i2c_start();
     eeprom_write_control_byte();
     eeprom_high_byte(addr);
@@ -292,68 +245,215 @@ void eeprom_read_page(uint16_t addr, uint8_t *readarray, size_t readlen){
     for(size_t i = 0; i < readlen; i++){
         WAIT_FOR_RXNE();
         readarray[i] = I2C1_DR;
-            if(i == readlen-1){
-                MASTER_SEND_NACK();
-                break;
-            }
+        if(i == readlen-1){
+            MASTER_SEND_NACK();
+            break;
+        }
     }
 }
 
-/*
-##############
-TEST FUNCTIONS
-##############
-*/
-
-void test_eeprom_write_byte(uint16_t a, uint16_t d){
-/* Test Function for EEPROM Writing */
-
-/* Write to address 100 for 169 */
-    uint16_t addr = a;
-    uint8_t data = d;
+void eeprom_write_byte_uint(uint16_t addr, uint8_t data){
+/* Write a single byte of an unsigned integer to specified address */
+    i2c_start();
+    eeprom_write_control_byte();
+    eeprom_high_byte(addr);
+    eeprom_low_byte(addr);
     
-    eeprom_i2c_init();
-    eeprom_write_byte(addr, data);
+    WAIT_FOR_TXE();
+    I2C1_DR = data;
+
+    WAIT_FOR_BTF();
+
+    i2c_stop();
+    eeprom_ack_poll();
+};
+
+void eeprom_write_pages_uint(uint16_t addr, uint8_t *arr, size_t arrlen){
+/* Write up to 8 pages (64 bytes) of unsigned integers */
+    
+    /* Return this function if the input is larger than 8 pages (64 bytes) */
+    if((arrlen < 0) | (arrlen > 64)){
+        return;
+    }
+    i2c_start();
+    /* Write 0b10100000 */
+    eeprom_write_control_byte();
+    eeprom_high_byte(addr);
+    eeprom_low_byte(addr);
+
+    for(size_t i = 0; i < arrlen; i++){
+        WAIT_FOR_TXE();
+        I2C1_DR = arr[i];
+    }
+    WAIT_FOR_BTF();
+    i2c_stop();
+    eeprom_ack_poll();
 }
 
-void test_eeprom_write_page(uint16_t addr){
-/* Test function for EEPROM writing page */
-    uint8_t write_arr[8] = {99,99,99,99,99,99,99,99};
-    
-    eeprom_i2c_init(); 
-    eeprom_write_page(addr, &write_arr, 8);
-}   
+/* Signed Integers */
 
-uint16_t test_eeprom_read_byte(uint16_t a){
-    eeprom_i2c_init();
+int8_t eeprom_read_byte_int(uint16_t addr){
+/* Read a single signed integer byte */
+    i2c_start();
+    /* Reading starts with write control byte to target address */
+    eeprom_write_control_byte();
+    eeprom_high_byte(addr);
+    eeprom_low_byte(addr);
 
-    uint16_t r = 0;
-    r = eeprom_read_byte(a);
+    /* Repeated start, then send read control byte */
+    i2c_start();
+    eeprom_read_control_byte();
 
+    WAIT_FOR_RXNE();
+    int8_t r = I2C1_DR;
+    i2c_stop();
     return r;
 }
 
-void test_eeprom_read_page(uint16_t addr){
-/* Test function for reading a page */
-    init_uart();
-    init_systick();
+void eeprom_read_int(uint16_t addr, int8_t *readarray, size_t readlen){
+/* Read signed integers */
+    i2c_start();
+    eeprom_write_control_byte();
+    eeprom_high_byte(addr);
+    eeprom_low_byte(addr);
 
-    eeprom_i2c_init();
+    i2c_start();
+    eeprom_read_control_byte();
 
-    uint8_t test_arr[8];
-    size_t arrsz = 8;
-
-    eeprom_read_page(addr, &test_arr, arrsz);
-    /* Keep printing every element in the array */
-    int i = 0;
-    while(1){
-        /* Reset i if it goes over array bounds */
-        if(i > 7){i = 0;}
-        char buffer[12];
-        sprintf(buffer, "%u - %u\r\n", i, test_arr[i]);
-
-        uart_print(buffer);
-        systick_sleep(250);
-        i++;
+    /* Own code for handling readlen of 1 */
+    if(readlen == 1){
+        WAIT_FOR_RXNE();
+        readarray[0] = (int8_t) I2C1_DR;
+        MASTER_SEND_NACK();
+        i2c_stop();
+        return;
     }
+
+    /* Set ACK for each byte read */
+    MASTER_SEND_ACK();
+
+    for(size_t i = 0; i < readlen; i++){
+        WAIT_FOR_RXNE();
+        readarray[i] = (int8_t) I2C1_DR;
+        if(i == readlen-1){
+            MASTER_SEND_NACK();
+            break;
+        }
+    }
+}
+
+void eeprom_write_byte_int(uint16_t addr, int8_t data){
+/* Write a single byte of a signed integer */
+    i2c_start();
+    eeprom_write_control_byte();
+    eeprom_high_byte(addr);
+    eeprom_low_byte(addr);
+    
+    WAIT_FOR_TXE();
+    I2C1_DR = data;
+
+    WAIT_FOR_BTF();
+
+    i2c_stop();
+    eeprom_ack_poll();
+}
+
+void eeprom_write_pages_int(uint16_t addr, int8_t *arr, size_t arrlen){
+/* Write up to 8 pages (64 bytes) of signed integers */
+
+    /* Return this function if the input is larger than 8 pages */
+    if((arrlen < 0) | (arrlen > 64)){
+        return;
+    }
+    i2c_start();
+    /* Write 0b10100000 */
+    eeprom_write_control_byte();
+    eeprom_high_byte(addr);
+    eeprom_low_byte(addr);
+
+    for(size_t i = 0; i < arrlen; i++){
+        WAIT_FOR_TXE();
+        I2C1_DR = arr[i];
+    }
+    WAIT_FOR_BTF();
+    i2c_stop();
+    eeprom_ack_poll();
+};
+
+/* Characters */
+
+char eeprom_read_byte_char(uint16_t addr){
+/* Read a single character */
+    return (char)eeprom_read_byte_uint(addr);
+}
+
+void eeprom_read_string(uint16_t addr, char *readstr, size_t readlen){
+/* Read a string (up to 64 chars) */
+    i2c_start();
+    eeprom_write_control_byte();
+    eeprom_high_byte(addr);
+    eeprom_low_byte(addr);
+
+    i2c_start();
+    eeprom_read_control_byte();
+
+    if(readlen == 1){
+        WAIT_FOR_RXNE();
+        readstr[0] = I2C1_DR;
+        MASTER_SEND_NACK();
+        i2c_stop();
+        /* Null terminator for string */
+        readstr[1] = '\0';
+        return;
+    }
+
+    MASTER_SEND_ACK();
+
+    for(size_t i = 0; i < readlen; i++){
+        WAIT_FOR_RXNE();
+        readstr[i] = (char) I2C1_DR;
+        if(i == readlen - 1){
+            MASTER_SEND_NACK();
+            break;
+        }
+    }
+    i2c_stop();
+    readstr[readlen] = '\0'; 
+}
+
+void eeprom_write_byte_char(uint16_t addr, char data){
+/* Write one character (ASCII) */
+    i2c_start();
+    eeprom_write_control_byte();
+    eeprom_high_byte(addr);
+    eeprom_low_byte(addr);
+
+    WAIT_FOR_TXE();
+    I2C1_DR = (uint8_t)data;
+
+    WAIT_FOR_BTF();
+
+    i2c_stop();
+    eeprom_ack_poll();
+}
+
+void eeprom_write_string(uint16_t addr, char* str, size_t strlen){
+/* Write up to 8 pages (64 chars) of string */
+    if((strlen < 0) | (strlen > 64)){
+        return;
+    }
+    i2c_start();
+
+    eeprom_write_control_byte();
+    eeprom_high_byte(addr);
+    eeprom_low_byte(addr);
+
+    for(size_t i = 0; i < strlen; i++){
+        WAIT_FOR_TXE();
+        I2C1_DR = (uint8_t) str[i];
+    }
+
+    WAIT_FOR_BTF();
+    i2c_stop();
+    eeprom_ack_poll();
 }

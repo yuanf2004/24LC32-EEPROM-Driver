@@ -85,18 +85,30 @@ void eeprom_high_byte(uint16_t addr);
 
 void eeprom_low_byte(uint16_t addr);
 
-void eeprom_write_byte(uint16_t addr, uint8_t data);
+void eeprom_ack_poll(void);
 
-uint16_t eeprom_read_byte(uint16_t addr);
+uint8_t eeprom_read_byte_uint(uint16_t addr);
 
-void test_eeprom_write_byte(uint16_t a, uint16_t d);
+void eeprom_read_uint(uint16_t addr, uint8_t *readarray, size_t readlen);
 
-uint16_t test_eeprom_read_byte(uint16_t a);
+void eeprom_write_byte_uint(uint16_t addr, uint8_t data);
 
-void test_eeprom_write_page(uint16_t addr);
+void eeprom_write_pages_uint(uint16_t addr, uint8_t *arr, size_t arrlen);
 
-void test_eeprom_read_page(uint16_t addr);
+int8_t eeprom_read_byte_int(uint16_t addr);
+
+void eeprom_read_int(uint16_t addr, int8_t *readarray, size_t readlen);
+
+void eeprom_write_byte_int(uint16_t addr, int8_t data);
+
+void eeprom_write_pages_int(uint16_t addr, int8_t *arr, size_t arrlen);
+
+char eeprom_read_byte_char(uint16_t addr);
+
+void eeprom_read_string(uint16_t addr, char *readstr, size_t readlen);
+
+void eeprom_write_byte_char(uint16_t addr, char data);
+
+void eeprom_write_string(uint16_t addr, char* str, size_t strlen);
 
 #endif
-
-/* Page 781 I2C */
