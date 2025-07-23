@@ -17,3 +17,9 @@ void test_eeprom_read_page(uint16_t addr);
 void test_eeprom_read_string(uint16_t addr);
 
 void test_eeprom_rw(uint16_t addr);
+
+void test_eeprom_rw_uint(uint16_t addr);
+
+void test_eeprom_rw_uint_page(uint16_t addr);
+
+void test_eeprom_rw_str(uint16_t addr);

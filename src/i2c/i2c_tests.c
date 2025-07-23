@@ -121,3 +121,30 @@ void test_eeprom_rw(uint16_t addr){
     eeprom_write_byte_char(addr, 'z');
     eeprom_read_byte_char(addr);
 }
+
+void test_eeprom_rw_uint(uint16_t addr){
+    eeprom_i2c_init();
+
+    eeprom_write_byte_uint(addr, 99);
+    eeprom_read_byte_uint(addr);
+}
+
+void test_eeprom_rw_uint_page(uint16_t addr){
+    eeprom_i2c_init();
+
+    uint8_t uint_arr[] = {1,2,3,4,5,6,7,8};
+    uint8_t uint_read_arr[8];
+
+    eeprom_write_pages_uint(addr, uint_arr, 8);
+    eeprom_read_uint(addr, uint_read_arr, 8);
+    }
+
+void test_eeprom_rw_str(uint16_t addr){
+    eeprom_i2c_init();
+    
+    char str[] = "Hello World!";
+    char r_str[13];
+
+    eeprom_write_string(addr, str, (sizeof(str) / sizeof(str[0])));
+    eeprom_read_string(addr, r_str, 13);
+}

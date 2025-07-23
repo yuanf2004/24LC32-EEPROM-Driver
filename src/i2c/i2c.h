@@ -62,6 +62,9 @@ Status Flag Macro Definitions
 /* Clear the acknowledge failure (AF) bit after checking NACK */
 #define MASTER_CLEAR_AF() I2C1_SR1 &= ~(1 << 10);
 
+/* Highest register in the 24LC32 that can be read and written */
+#define MAX_REGISTER_NUM 4096
+
 #include <stdint.h>
 #include <stddef.h>
 #include "uart/uart.h"
