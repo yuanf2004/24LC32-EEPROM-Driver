@@ -67,8 +67,8 @@ Status Flag Macro Definitions
 
 #include <stdint.h>
 #include <stddef.h>
-#include "uart/uart.h"
-#include "systick/systick.h"
+#include "i2c/uart/uart.h"
+#include "i2c/systick/systick.h"
 
 void gpiob_init(void);
 
