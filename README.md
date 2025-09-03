@@ -10,10 +10,10 @@ Before calling any API code, please ensure that the "eeprom_i2c_init" function i
 
 # Logic Analyzer I2C Communication Screenshots
 
-eeprom_read_string Call Visualized
+eeprom_read_string() Call Visualized
 ![Reading Hello World](screenshots/helloworldread.png)
 
-eeprom_write_pages_uint() and eeprom_read_uint() call 
+eeprom_write_pages_uint() and eeprom_read_uint() Call Visualized 
 ![Writing and Reading 1 Through 8](screenshots/writeread1through8.png)
 
 
