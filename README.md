@@ -10,6 +10,13 @@ Before calling any API code, please ensure that the "eeprom_i2c_init" function i
 
 # Logic Analyzer I2C Communication Screenshots
 
+eeprom_read_string Call Visualized
+![Reading Hello World](screenshots/helloworldread.png)
+
+eeprom_write_pages_uint() and eeprom_read_uint() call 
+![Writing and Reading 1 Through 8](screenshots/writeread1through8.png)
+
+
 # Functions
 
 **NOTE**: For read and writes of multiple bytes, the registers are sequential. For example, reading register 0x01 with a read size of 3 will read registers 0x01, 0x02, and 0x03.
