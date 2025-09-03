@@ -1,11 +1,6 @@
 #include "i2c.h"
 #include "systick/systick.h"
 
-//TODO
-/*
-- Need to add error handling for invalid inputs
-*/
-
 /*
 Driver for Adafruit 24LC32 EEPROM
 Written by: Yuan Feng
@@ -182,24 +177,6 @@ void eeprom_low_byte(uint16_t addr){
     uint8_t lb = addr & 0xFF;
     I2C1_DR = lb;
     systick_sleep(1);
-};
-
-// ! No longer in use, does not work with transitioning from write to reads
-void eeprom_ack_poll(void){
-/* EEPROM acknowledge polling for post-write */
-    while(1){
-        i2c_start();
-        ack_poll_write_control_byte();
-        /* If received a NACK, reset */
-        if(MASTER_CHECK_NACK){
-            /* Clear ACK Failure bit */
-            CLEAR_AF();
-            systick_sleep(1);
-        }
-        else{
-            break;
-        }
-    }
 };
 
 /* 
